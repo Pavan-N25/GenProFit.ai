@@ -9,6 +9,8 @@ class PredictionAgent:
     """
 
     def __init__(self, n_sims=5000, seed=0):
+        if n_sims < 1:
+            raise ValueError("n_sims must be at least 1")
         self.n_sims = n_sims
         self.rng = np.random.default_rng(seed)
 
@@ -22,22 +24,27 @@ class PredictionAgent:
         price_series: pd.Series (close prices indexed by date)
         """
         logrets = self.compute_log_returns(price_series)
-        mu = logrets.mean() * 252  # annualized
-        sigma = logrets.std() * (252**0.5)  # annualized
+        logrets = logrets.replace([np.inf, -np.inf], np.nan).dropna()
+        if len(logrets) < 2 or not np.isfinite(logrets).all():
+            raise ValueError("At least three valid positive closing prices are required for prediction")
+        if not horizons_days or any(horizon < 1 for horizon in horizons_days):
+            raise ValueError("Prediction horizons must be positive trading-day counts")
+        if any(target <= 0 for target in targets_pct):
+            raise ValueError("Return targets must be positive percentages")
+        daily_mu = float(logrets.mean())
+        daily_sigma = float(logrets.std())
         last_price = price_series.iloc[-1]
         results = {int(t*100): {} for t in targets_pct}
 
-        # simulate for each horizon
-        for horizon in horizons_days:
-            T = horizon / 252.0
-            # simulate terminal price using Geometric Brownian motion
-            # vectorized simulation: n_sims
-            drift = (mu - 0.5 * sigma**2) * T
-            diffusion = sigma * np.sqrt(T) * self.rng.normal(size=self.n_sims)
-            terminal = last_price * np.exp(drift + diffusion)
-            returns = (terminal - last_price) / last_price
+        # Estimate whether simulated daily paths touch each target before the horizon.
+        simulated_returns = self.rng.normal(
+            loc=daily_mu, scale=daily_sigma,
+            size=(self.n_sims, max(horizons_days)),
+        ).cumsum(axis=1)
+        peak_returns = np.expm1(simulated_returns)
+        for horizon in sorted(set(horizons_days)):
             for target in targets_pct:
-                prob = float((returns >= target).sum() / self.n_sims)
+                prob = float((peak_returns[:, :horizon].max(axis=1) >= target).mean())
                 results[int(target*100)][horizon] = round(prob, 4)
         return results
 
@@ -57,3 +64,17 @@ class PredictionAgent:
             last = sorted_horizons[-1]
             return last, horizon_probs[last]
         return None, 0.0
+
+    def backtest_hit_rate(self, price_series, target_pct=0.10, horizon_days=30):
+        """Measure historical forward-window target hits; this is descriptive, not predictive."""
+        if target_pct <= 0 or horizon_days < 1:
+            raise ValueError("target_pct and horizon_days must be positive")
+        prices = pd.to_numeric(price_series, errors="coerce").dropna().to_numpy(dtype=float)
+        if len(prices) <= horizon_days or np.any(prices <= 0):
+            return {"observations": 0, "hit_rate": None}
+        hits = 0
+        observations = len(prices) - horizon_days
+        for index in range(observations):
+            forward_peak = prices[index + 1:index + horizon_days + 1].max()
+            hits += forward_peak >= prices[index] * (1 + target_pct)
+        return {"observations": observations, "hit_rate": round(hits / observations, 4)}

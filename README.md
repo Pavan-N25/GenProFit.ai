@@ -67,13 +67,6 @@ Calculates:
 - Stamp duty  
 - Capital gains tax  
 - Final **net return after all deductions**
-
----
-
-### ⚠️ **6. Risk Rating System**  
-Risk is classified using:  
-- volatility  
-- sentiment score  
 - growth consistency  
 - news patterns  
 

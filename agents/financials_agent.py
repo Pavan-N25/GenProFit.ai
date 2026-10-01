@@ -1,6 +1,4 @@
 # agents/financials_agent.py
-import numpy as np
-
 class FinancialsAgent:
     """
     Compute YoY and CAGR-like metrics from provided financials dictionary.
@@ -37,3 +35,32 @@ class FinancialsAgent:
             "eps_start": eps_start,
             "eps_end": eps_end
         }
+
+    def fetch_yahoo(self, ticker):
+        """Extract annual revenue and EPS when Yahoo Finance provides both."""
+        try:
+            import yfinance as yf
+        except ImportError as error:
+            raise RuntimeError("Yahoo financials require yfinance. Install project requirements first.") from error
+
+        statements = yf.Ticker(ticker).financials
+        if statements.empty or "Total Revenue" not in statements.index:
+            return {"note": "Annual revenue data is unavailable from the selected provider"}
+        eps_row = next((name for name in ("Diluted EPS", "Basic EPS") if name in statements.index), None)
+        if eps_row is None:
+            return {"note": "Annual EPS data is unavailable from the selected provider"}
+
+        yearly = {}
+        for column in statements.columns:
+            revenue, eps = statements.loc["Total Revenue", column], statements.loc[eps_row, column]
+            if revenue is None or eps is None:
+                continue
+            try:
+                revenue, eps = float(revenue), float(eps)
+            except (TypeError, ValueError):
+                continue
+            if revenue > 0:
+                yearly[column.year] = {"revenue": revenue, "eps": eps}
+        if len(yearly) < 2:
+            return {"note": "Fewer than two complete annual revenue and EPS records were available"}
+        return self.summarize_growth(yearly)

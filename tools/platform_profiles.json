@@ -14,5 +14,39 @@
     "gst_pct": 0.18,
     "sebi_charges_pct": 0.000001,
     "stamp_duty_pct": 0.00015
+  },
+  "groww": {
+    "name": "Groww",
+    "currency": "INR",
+    "brokerage": {"delivery_pct": 0.0, "intraday_pct": 0.05, "min_intraday": 0, "max_intraday": 20},
+    "stt_pct": 0.0005,
+    "gst_pct": 0.18,
+    "sebi_charges_pct": 0.000001,
+    "stamp_duty_pct": 0.00015
+  },
+  "robinhood": {
+    "name": "Robinhood",
+    "currency": "USD",
+    "brokerage": {"delivery_pct": 0.0, "intraday_pct": 0.0, "min_intraday": 0},
+    "stt_pct": 0.0,
+    "gst_pct": 0.0,
+    "sebi_charges_pct": 0.0,
+    "stamp_duty_pct": 0.0
+  },
+  "interactive_brokers": {
+    "name": "Interactive Brokers",
+    "currency": "USD",
+    "brokerage": {
+      "delivery_pct": 0.0,
+      "intraday_pct": 0.0,
+      "min_intraday": 0,
+      "per_share": 0.005,
+      "minimum_per_order": 1.0,
+      "maximum_pct": 0.01
+    },
+    "stt_pct": 0.0,
+    "gst_pct": 0.0,
+    "sebi_charges_pct": 0.0,
+    "stamp_duty_pct": 0.0
   }
 }
